@@ -3,6 +3,23 @@
 #   BACKEND_URL=http://<your-ec2-ip>:8000/api/v1 docker compose -f docker-compose.prod.yml up -d --build
 
 services:
+  db:
+    image: ankane/pgvector:v0.5.1
+    container_name: lumina_db
+    environment:
+      POSTGRES_USER: lumina_admin
+      POSTGRES_PASSWORD: lumina_secure_password
+      POSTGRES_DB: lumina_db
+    ports:
+      - "5432:5432"
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lumina_admin -d lumina_db"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
   backend:
     build:
       context: .
@@ -12,6 +29,11 @@ services:
       - "8000:8000"
     env_file:
       - .env
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://lumina_admin:lumina_secure_password@db:5432/lumina_db
+    depends_on:
+      db:
+        condition: service_healthy
     restart: unless-stopped
 
   frontend:
@@ -26,3 +48,6 @@ services:
     depends_on:
       - backend
     restart: unless-stopped
+
+volumes:
+  pgdata:

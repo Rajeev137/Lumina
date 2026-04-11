@@ -1,0 +1,42 @@
+# ── Python ────────────────────────────────────────────────────────────────────
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+*.egg-info/
+dist/
+build/
+
+# ── Environment / Secrets ────────────────────────────────────────────────────
+.env
+.env.example
+
+# ── IDE / OS ─────────────────────────────────────────────────────────────────
+.DS_Store
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ── Node / Frontend ──────────────────────────────────────────────────────────
+frontend/node_modules/
+frontend/dist/
+frontend/.env
+frontend/.env.local
+
+# ── Docker ───────────────────────────────────────────────────────────────────
+# (docker-compose.yml and Dockerfiles ARE committed — they define the infra)
+
+# ── Test data (large files not needed in repo) ───────────────────────────────
+test_files/handbook-main/
+test_files/gitlab_security_kb.md
+test_files/results_old.csv
+*.csv
+
+# ── Misc ─────────────────────────────────────────────────────────────────────
+*.log
+*.bak
+*.tmp
+GEMINI_PROJECT_CONTEXT.md

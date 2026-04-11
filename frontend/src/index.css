@@ -1,0 +1,79 @@
+@import "tailwindcss";
+
+/*
+ * Design tokens — used as Tailwind theme extensions via @theme.
+ * Keeps the entire colour palette in one place for both light & dark modes.
+ */
+
+@theme {
+  /* Semantic colours – referenced as `bg-background`, `text-heading`, etc. */
+  --color-background: var(--bg);
+  --color-surface: var(--surface);
+  --color-muted: var(--muted);
+  --color-border: var(--border-color);
+  --color-foreground: var(--text);
+  --color-heading: var(--text-h);
+  --color-muted-foreground: var(--text);
+  --color-accent: var(--accent);
+}
+
+/* ── Light mode (default) ─────────────────────────────────────────────────── */
+:root {
+  --bg: #fafafa;
+  --surface: #ffffff;
+  --muted: #f4f4f5;
+  --border-color: #e4e4e7;
+  --text: #71717a;
+  --text-h: #09090b;
+  --accent: #8b5cf6;
+  color-scheme: light;
+}
+
+/* ── Dark mode — explicit class ───────────────────────────────────────────── */
+:root.dark {
+  --bg: #09090b;
+  --surface: #18181b;
+  --muted: #27272a;
+  --border-color: #3f3f46;
+  --text: #a1a1aa;
+  --text-h: #fafafa;
+  --accent: #a78bfa;
+  color-scheme: dark;
+}
+
+/* ── Global resets ────────────────────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  font-family:
+    system-ui,
+    -apple-system,
+    "Segoe UI",
+    Roboto,
+    sans-serif;
+  background: var(--bg);
+  color: var(--text);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Scrollbar styling for WebKit browsers */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+::-webkit-scrollbar-thumb {
+  background: var(--border-color);
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: var(--text);
+}

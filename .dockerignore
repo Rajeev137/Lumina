@@ -1,0 +1,10 @@
+.venv
+__pycache__
+*.pyc
+.git
+.env
+frontend/
+*.md
+.dockerignore
+docker-compose.yml
+generate_test_excel.py

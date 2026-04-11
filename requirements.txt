@@ -1,0 +1,40 @@
+# ── Web Framework ────────────────────────────────
+fastapi==0.135.3
+uvicorn==0.44.0
+python-multipart==0.0.20
+
+# ── Database ─────────────────────────────────────
+asyncpg==0.31.0
+sqlalchemy==2.0.49
+pgvector==0.4.2
+
+# ── Config / Validation ─────────────────────────
+pydantic==2.12.5
+pydantic-settings==2.13.1
+
+# ── AI / Agent Framework ────────────────────────
+langchain-core==1.2.27
+langchain-text-splitters==1.1.1
+langchain-google-genai==4.2.1
+langchain-ollama==1.1.0
+langgraph==1.1.6
+
+# ── Google Generative AI (embeddings via API) ──
+google-genai>=1.0.0
+google-api-core>=2.0.0
+
+# ── Auth / Security ──────────────────────────────
+passlib[bcrypt]==1.7.4
+bcrypt<4.1
+PyJWT>=2.8.0
+email-validator>=2.0.0
+
+# ── Retry / Resilience ──────────────────────────
+tenacity>=8.0.0
+
+# ── Document Parsing ────────────────────────────
+pymupdf4llm==0.0.21
+
+# ── Excel / Data ────────────────────────────────
+pandas==3.0.2
+openpyxl==3.1.5

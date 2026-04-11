@@ -1,0 +1,28 @@
+# Production compose — no local DB (uses Supabase), backend + frontend only
+# Usage:
+#   BACKEND_URL=http://<your-ec2-ip>:8000/api/v1 docker compose -f docker-compose.prod.yml up -d --build
+
+services:
+  backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lumina_backend
+    ports:
+      - "8000:8000"
+    env_file:
+      - .env
+    restart: unless-stopped
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        VITE_API_BASE_URL: ${BACKEND_URL:-http://localhost:8000/api/v1}
+    container_name: lumina_frontend
+    ports:
+      - "80:80"
+    depends_on:
+      - backend
+    restart: unless-stopped

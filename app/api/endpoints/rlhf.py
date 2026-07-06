@@ -38,8 +38,10 @@ async def submit_rlhf_feedback(
 
     if status == "approved":
         try:
-            q_embedding_list = await embedding_service.generate_embeddings([payload.question])
-            q_embedding = q_embedding_list[0]
+            # Use the query-prefixed embedding so stored golden questions live in
+            # the same space that incoming questions are compared against in
+            # check_golden_bank (see retrieve_node).
+            q_embedding = await embedding_service.generate_query_embedding(payload.question)
 
             golden = GoldenAnswer(
                 user_id=current_user.id,

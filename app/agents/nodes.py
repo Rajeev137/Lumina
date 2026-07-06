@@ -2,11 +2,9 @@ import asyncio
 import logging
 from pydantic import BaseModel, Field
 from tenacity import retry, stop_after_attempt, wait_exponential, retry_if_exception_type
-from langchain_google_genai import ChatGoogleGenerativeAI
-from langchain_ollama import ChatOllama
+from langchain_anthropic import ChatAnthropic
 from langchain_core.prompts import ChatPromptTemplate
-from google.api_core.exceptions import ServiceUnavailable, ResourceExhausted
-from google.genai.errors import ServerError as GenaiServerError
+from anthropic import APIStatusError, RateLimitError, APIConnectionError
 from app.core.config import settings
 from app.agents.state import AgentState
 from app.services.retrieval import get_relevant_context, check_golden_bank
@@ -21,8 +19,8 @@ LLM_CALL_COOLDOWN = 1.5
 
 
 def extract_text(content) -> str:
-    """Normalize LLM .content — Gemini may return a list of content blocks
-    instead of a plain string (e.g. [{"type":"text","text":"...","extras":{...}}])."""
+    """Normalize LLM .content — Claude may return a list of content blocks
+    instead of a plain string (e.g. [{"type":"text","text":"..."}])."""
     if isinstance(content, str):
         return content
     if isinstance(content, list):
@@ -38,22 +36,16 @@ def extract_text(content) -> str:
 
 # llm store
 def get_llm():
-    if settings.USE_LOCAL_LLM:
-        logger.info(f"Initializing LOCAL LLM: {settings.LOCAL_MODEL_ID}")
-        # Ollama automatically runs on http://localhost:11434
-        return ChatOllama(
-            model=settings.LOCAL_MODEL_ID,
-            temperature=0.1
-        )
-    else:
-        logger.info("Initializing PRODUCTION LLM: Gemini")
-        return ChatGoogleGenerativeAI(
-            model=settings.GENERATION_MODEL_ID,
-            api_key=settings.GEMINI_API_KEY,
-            temperature=0.1,
-            max_retries=10,
-            timeout=180,
-        )
+    # Sonnet 5 in production, Haiku 4.5 for local/dev — both via the Anthropic API.
+    model_id = settings.LOCAL_MODEL_ID if settings.USE_LOCAL_LLM else settings.GENERATION_MODEL_ID
+    logger.info(f"Initializing {'LOCAL' if settings.USE_LOCAL_LLM else 'PRODUCTION'} LLM: {model_id}")
+    return ChatAnthropic(
+        model=model_id,
+        api_key=settings.ANTHROPIC_API_KEY,
+        temperature=0.1,
+        max_retries=10,
+        timeout=180,
+    )
 
 
 # Lazy — initialized on first agent invocation, not at import time
@@ -78,11 +70,12 @@ async def retrieve_node(state: AgentState) -> dict:
 
     user_id = state.get("user_id")
 
-    # Layer B: Check Golden Q&A Bank for semantic cache hit
+    # Layer B: Check Golden Q&A Bank for semantic cache hit.
+    # Use the query-prefixed embedding so it lands in the same space the stored
+    # golden questions are compared in.
     if user_id:
         try:
-            q_vectors = await embedding_service.generate_embeddings([state["rfp_question"]])
-            q_embedding = q_vectors[0]
+            q_embedding = await embedding_service.generate_query_embedding(state["rfp_question"])
             async with AsyncSessionLocal() as db:
                 golden_hit = await check_golden_bank(db, user_id, q_embedding)
                 if golden_hit:
@@ -101,15 +94,16 @@ async def retrieve_node(state: AgentState) -> dict:
     return {"retrieved_docs": real_context}
 
 
-# Retry decorator for 503/429 errors — exponential backoff from 4s to 60s, up to 6 retries.
-# This catches errors that slip past langchain's built-in max_retries (e.g. structured output calls).
+# Retry decorator for 429/5xx/connection errors — exponential backoff from 4s to
+# 60s, up to 6 retries. Catches errors that slip past langchain's built-in
+# max_retries (e.g. structured-output calls). APIStatusError covers 5xx/overloaded.
 _llm_retry = retry(
     retry=retry_if_exception_type(
-        (ServiceUnavailable, ResourceExhausted, GenaiServerError)),
+        (RateLimitError, APIStatusError, APIConnectionError)),
     wait=wait_exponential(multiplier=2, min=4, max=60),
     stop=stop_after_attempt(6),
     before_sleep=lambda rs: logger.warning(
-        f"Gemini 503/429 — retry #{rs.attempt_number} in {rs.next_action.sleep:.1f}s"
+        f"Claude API error — retry #{rs.attempt_number} in {rs.next_action.sleep:.1f}s"
     ),
     reraise=True,
 )

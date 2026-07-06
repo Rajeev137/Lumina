@@ -86,12 +86,12 @@ async def download_rfp_result(job_id: str):
 
 # ── Batch Processing ──────────────────────────────────────────────────────────
 
-# Dynamic: local Ollama is CPU-bound (keep low), Gemini API uses conservative
-# concurrency to avoid 503 "high demand" errors from burst-firing.
+# Conservative concurrency to avoid 429 rate-limit / overloaded errors from
+# burst-firing the Claude API.
 MAX_CONCURRENT_AGENTS = 2 if settings.USE_LOCAL_LLM else 3
 
 # Seconds to wait between finishing one question and starting the next.
-# Spreads Gemini API load across the RPM/TPM window.
+# Spreads Claude API load across the rate-limit window.
 INTER_QUESTION_DELAY = 2.0
 
 
@@ -113,7 +113,7 @@ async def process_single_question(question: str, semaphore: asyncio.Semaphore, u
             return {"question": question, "error": str(e)}
         finally:
             # Delay before releasing the semaphore so the next question
-            # doesn't fire immediately — spreads Gemini API load.
+            # doesn't fire immediately — spreads Claude API load.
             await asyncio.sleep(INTER_QUESTION_DELAY)
 
 
@@ -330,7 +330,7 @@ async def stream_rfp_batch(current_user: CurrentUser, file: UploadFile = File(..
                 all_answers.append(err_result)
                 yield f"event: question_done\ndata: {json.dumps({'question_index': qi, 'total': total, 'result': err_result})}\n\n"
 
-            # Delay between questions to spread Gemini API load and avoid 503s
+            # Delay between questions to spread Claude API load and avoid 429s
             if qi < total - 1:
                 await asyncio.sleep(INTER_QUESTION_DELAY)
 

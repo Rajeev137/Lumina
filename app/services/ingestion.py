@@ -1,7 +1,7 @@
 import uuid
 import logging
 from typing import Callable, Awaitable, Optional
-from sqlalchemy import insert
+from sqlalchemy import insert, func
 from sqlalchemy.ext.asyncio import AsyncSession
 from langchain_text_splitters import MarkdownTextSplitter
 from app.db.models import Document, Chunk
@@ -19,10 +19,17 @@ INSERT_BATCH_SIZE = 500
 class IngestionService:
     def __init__(self):
         # Markdown-aware splitter: respects headers, tables, code blocks and lists
-        # instead of blindly slicing mid-table/mid-sentence like RecursiveCharacterTextSplitter
+        # instead of blindly slicing mid-table/mid-sentence like RecursiveCharacterTextSplitter.
+        #
+        # Chunk size tuned DOWN from 2000 → 1000 chars: a retrieval chunk should
+        # carry roughly ONE idea. At 2000 chars each embedding averaged several
+        # topics together, blurring the vector and hurting recall. ~1000 chars
+        # (~200-250 tokens) is a good retrieval granularity for bge-large.
+        # Overlap kept proportional (~15%) so an idea split across a boundary
+        # still survives whole in at least one chunk.
         self.text_splitter = MarkdownTextSplitter(
-            chunk_size=2000,
-            chunk_overlap=200,
+            chunk_size=1000,
+            chunk_overlap=150,
         )
 
     async def ingest_document(
@@ -86,6 +93,10 @@ class IngestionService:
                 "user_id": user_id,
                 "content": content,
                 "embedding": embedding,
+                # Populate the FTS vector server-side so hybrid (keyword) search
+                # has something to match against. 'english' config handles
+                # stemming/stop-words.
+                "fts_vector": func.to_tsvector("english", content),
                 "chunk_index": idx,
             }
             for idx, (content, embedding) in enumerate(zip(text_chunks, all_embeddings))

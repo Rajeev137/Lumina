@@ -1,28 +1,47 @@
+import asyncio
 import logging
 from typing import AsyncIterator
-from google import genai
-from google.genai import types
+from sentence_transformers import SentenceTransformer
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
-# Configure the Gemini SDK once at module level
-client = genai.Client(api_key=settings.GEMINI_API_KEY)
+# bge-large-en-v1.5 recommends prefixing *queries* (not passages) with this
+# instruction to get its best retrieval quality. Passages are embedded as-is.
+BGE_QUERY_INSTRUCTION = "Represent this sentence for searching relevant passages: "
 
-# Embedding config: truncate to 768 dims for pgvector storage efficiency
-_embed_config = types.EmbedContentConfig(output_dimensionality=768)
+# Load the model once at import time. First run downloads ~1.3GB to the HF cache;
+# subsequent runs load from disk. CPU by default; picks up a GPU automatically if
+# one is present (via the underlying torch device).
+logger.info(f"Loading embedding model: {settings.EMBEDDING_MODEL_ID}")
+_model = SentenceTransformer(settings.EMBEDDING_MODEL_ID)
+
+
+def _encode(texts: list[str]) -> list[list[float]]:
+    """Synchronous encode — normalized vectors so cosine distance is well-behaved."""
+    vectors = _model.encode(
+        texts,
+        normalize_embeddings=True,
+        convert_to_numpy=True,
+        show_progress_bar=False,
+    )
+    return vectors.tolist()
 
 
 class EmbeddingService:
     async def generate_embeddings(self, texts: list[str]) -> list[list[float]]:
+        """Embed passages/documents. Runs the sync model in a thread so the
+        FastAPI event loop isn't blocked."""
         if not texts:
             return []
-        result = await client.aio.models.embed_content(
-            model=settings.EMBEDDING_MODEL_ID,
-            contents=texts,
-            config=_embed_config,
-        )
-        return [e.values for e in result.embeddings]
+        return await asyncio.to_thread(_encode, texts)
+
+    async def generate_query_embedding(self, query: str) -> list[float]:
+        """Embed a search query with the bge query instruction prefix.
+        Use this for the incoming RFP question, not for stored chunks."""
+        prefixed = BGE_QUERY_INSTRUCTION + query
+        vectors = await asyncio.to_thread(_encode, [prefixed])
+        return vectors[0]
 
     async def generate_embeddings_in_batches(
         self,
@@ -31,16 +50,12 @@ class EmbeddingService:
     ) -> AsyncIterator[tuple[int, list[list[float]]]]:
         """
         Yield (batch_start_index, embeddings) for successive slices of *texts*.
-        Google's embed_content supports up to 100 texts per call.
+        Batching turns many small encodes into fewer large matrix multiplies.
         """
         for start in range(0, len(texts), batch_size):
             batch = texts[start: start + batch_size]
-            result = await client.aio.models.embed_content(
-                model=settings.EMBEDDING_MODEL_ID,
-                contents=batch,
-                config=_embed_config,
-            )
-            yield start, [e.values for e in result.embeddings]
+            embeddings = await asyncio.to_thread(_encode, batch)
+            yield start, embeddings
 
 
 embedding_service = EmbeddingService()

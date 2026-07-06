@@ -16,11 +16,17 @@ class Settings(BaseSettings):
     CORS_ORIGINS: str = "*"
 
     # AI/LLM configurations
-    GEMINI_API_KEY: str
-    EMBEDDING_MODEL_ID: str = "gemini-embedding-001"
-    GENERATION_MODEL_ID: str = "gemini-2.5-flash"
+    # Generation runs on Claude. Embeddings run on a local sentence-transformers
+    # model (see EMBEDDING_MODEL_ID) — no embedding API key is needed.
+    ANTHROPIC_API_KEY: str
+
+    # Local embedding model (bge-large-en-v1.5 → 1024-dim vectors).
+    EMBEDDING_MODEL_ID: str = "BAAI/bge-large-en-v1.5"
+
+    # Chat models: Sonnet 5 in production, Haiku 4.5 for local/dev.
+    GENERATION_MODEL_ID: str = "claude-sonnet-5"
     USE_LOCAL_LLM: bool = False
-    LOCAL_MODEL_ID: str = "phi3"
+    LOCAL_MODEL_ID: str = "claude-haiku-4-5"
 
     @property
     def cors_origin_list(self) -> list[str]:

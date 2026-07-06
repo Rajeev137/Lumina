@@ -53,9 +53,9 @@ app.add_middleware(
 @app.get("/health")
 async def health_check():
     if settings.USE_LOCAL_LLM:
-        generation_model = f"{settings.LOCAL_MODEL_ID} (local - Ollama)"
+        generation_model = f"{settings.LOCAL_MODEL_ID} (Claude)"
     else:
-        generation_model = f"{settings.GENERATION_MODEL_ID} (Gemini API)"
+        generation_model = f"{settings.GENERATION_MODEL_ID} (Claude)"
     return {
         "status": "healthy",
         "generation_model": generation_model,

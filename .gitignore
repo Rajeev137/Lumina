@@ -30,9 +30,9 @@ frontend/.env.local
 # (docker-compose.yml and Dockerfiles ARE committed — they define the infra)
 
 # ── Test data (large files not needed in repo) ───────────────────────────────
-test_files/handbook-main/
-test_files/gitlab_security_kb.md
-test_files/results_old.csv
+# Local manual-testing scratch space (sample PDFs, a cloned handbook repo, a
+# nested .venv, generated CSVs) — not source, not needed by anyone else.
+testing_lumina/
 *.csv
 
 # ── Misc ─────────────────────────────────────────────────────────────────────
@@ -41,5 +41,3 @@ test_files/results_old.csv
 *.tmp
 GEMINI_PROJECT_CONTEXT_lumina.md
 tasks.md
-testing_lumina
-

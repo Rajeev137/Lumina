@@ -39,4 +39,7 @@ test_files/results_old.csv
 *.log
 *.bak
 *.tmp
-GEMINI_PROJECT_CONTEXT.md
+GEMINI_PROJECT_CONTEXT_lumina.md
+tasks.md
+testing_lumina
+
